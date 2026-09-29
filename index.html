@@ -90,7 +90,7 @@ canvas{width:100%; touch-action:none; border:1px solid var(--border); border-rad
 
   <div id="step-video" class="step">
     <h1>Watch the safety video</h1>
-    <p class="sub">You must watch the full video before continuing.</p>
+    <p class="sub">Please watch the video. The Continue button unlocks after 1 minute.</p>
     <div class="videobox" id="videoBox">▶ Safety briefing film<br>(placeholder — set VIDEO_URL)</div>
     <div class="progress"><div id="videoProgress"></div></div>
     <button id="videoNextBtn" disabled>Continue</button>
@@ -235,10 +235,63 @@ document.getElementById("startBtn").onclick = ()=>{
 
 // ===== CONFIG =====
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby0_8EalLK6mdeCZR9k5mfbO1-rOO9jI9vi7qS7WnbPo7UC3Tda5O2UGgj0TMhnm3T3/exec"; // Google Apps Script web app URL
-const VIDEO_URL  = "";                        // e.g. "safety-film.mp4" hosted next to this page; leave "" to use a 6-second placeholder
+const VIDEO_URL  = "";                        // optional: direct .mp4 file (e.g. "safety-film.mp4"); leave "" if using YouTube
+const YOUTUBE_URL = "https://youtu.be/SZdTOriMlvc?si=JZ96RLm5GJZ0KE8l";   // any YouTube link (watch, youtu.be, shorts); leave "" to disable
 
 // Step 2: video
+function youtubeId(u){
+  const m = String(u||"").match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+const MIN_WATCH_SECONDS = 60;   // Continue unlocks after this many seconds of actual watching
+let ytPlayer=null, ytTimer=null;
+function runYouTube(id){
+  const btn=document.getElementById("videoNextBtn"); btn.disabled=true;
+  const bar=document.getElementById("videoProgress"); bar.style.width="0%";
+  const box=document.getElementById("videoBox");
+  box.style.cssText="position:relative;width:100%;aspect-ratio:16/9;padding:0;background:#000;border-radius:8px;overflow:hidden;";
+  box.innerHTML='<div id="ytPlayer" style="position:absolute;inset:0;width:100%;height:100%;"></div>';
+  let last=0;
+  function build(){
+    if(ytPlayer){ try{ytPlayer.destroy();}catch(e){} }
+    ytPlayer = new YT.Player("ytPlayer",{
+      videoId:id,
+      width:"100%", height:"100%",
+      playerVars:{ rel:0, playsinline:1, modestbranding:1, disablekb:1, fs:1 },
+      events:{
+        onReady:()=>{
+          clearInterval(ytTimer);
+          ytTimer=setInterval(()=>{
+            const t=ytPlayer.getCurrentTime?ytPlayer.getCurrentTime():0;
+            const d=ytPlayer.getDuration?ytPlayer.getDuration():0;
+            if(t>last+2){ ytPlayer.seekTo(last,true); }   // block skipping ahead
+            else if(t>last){ last=t; }
+            const need=Math.min(MIN_WATCH_SECONDS, d||MIN_WATCH_SECONDS);
+            bar.style.width=Math.min(last/need*100,100)+"%";
+            if(last>=need){ btn.disabled=false; }
+          },500);
+        },
+        onStateChange:(e)=>{
+          if(e.data===YT.PlayerState.ENDED){
+            const d=ytPlayer.getDuration();
+            if(last>=d-3){ bar.style.width="100%"; btn.disabled=false; clearInterval(ytTimer); }
+            else { ytPlayer.seekTo(last,true); }   // ended by skipping: resume from watched point
+          }
+        }
+      }
+    });
+  }
+  if(window.YT && YT.Player){ build(); }
+  else {
+    window.onYouTubeIframeAPIReady = build;
+    if(!document.getElementById("ytApi")){
+      const sc=document.createElement("script"); sc.id="ytApi"; sc.src="https://www.youtube.com/iframe_api"; document.head.appendChild(sc);
+    }
+  }
+}
 function runVideo(){
+  const yid = youtubeId(YOUTUBE_URL);
+  if(yid){ runYouTube(yid); return; }
   if(VIDEO_URL){
     const btn=document.getElementById("videoNextBtn"); btn.disabled=true;
     const box=document.getElementById("videoBox");
@@ -260,6 +313,7 @@ function runVideo(){
   },200);
 }
 document.getElementById("videoNextBtn").onclick = ()=>{
+  try{ if(ytPlayer&&ytPlayer.pauseVideo) ytPlayer.pauseVideo(); clearInterval(ytTimer); }catch(e){}
   state.quizSet = [...bank.keys()].sort(()=>Math.random()-0.5).slice(0,5).map(i=>questions[i]);
   state.quizIdx=0; state.answers=[];
   show("step-quiz");
