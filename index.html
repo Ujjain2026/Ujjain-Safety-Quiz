@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Visitor Safety Briefing Quiz</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --text:#1a1d23; --muted:#6b7280;
+  --accent:#1d6fd8; --accent-text:#fff; --border:#e2e5ea; --danger:#c0392b; --ok:#1a8a4a;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14161a; --card:#1e2126; --text:#eef0f3; --muted:#9aa1ac;
+    --accent:#4a90e2; --accent-text:#0b0d10; --border:#2b2f36;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14161a; --card:#1e2126; --text:#eef0f3; --muted:#9aa1ac;
+  --accent:#4a90e2; --accent-text:#0b0d10; --border:#2b2f36;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
+*{box-sizing:border-box;}
+body{
+  margin:0; min-height:100%; background:var(--bg); color:var(--text);
+  font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  display:flex; justify-content:center; padding:24px 14px;
+}
+.card{
+  width:100%; max-width:480px; background:var(--card); border:1px solid var(--border);
+  border-radius:14px; padding:24px; box-shadow:0 2px 10px rgba(0,0,0,0.06);
+}
+h1{font-size:1.15rem; margin:0 0 4px;}
+p.sub{color:var(--muted); font-size:0.9rem; margin:0 0 20px;}
+.step{display:none;}
+.step.active{display:block;}
+label{display:block; font-size:0.85rem; margin-bottom:6px; color:var(--muted);}
+input[type=text]{
+  width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px;
+  background:transparent; color:var(--text); font-size:1rem; margin-bottom:16px;
+}
+button{
+  width:100%; padding:12px; border:none; border-radius:8px; background:var(--accent);
+  color:var(--accent-text); font-size:1rem; font-weight:600; cursor:pointer; margin-top:6px;
+}
+button:disabled{opacity:.45; cursor:not-allowed;}
+button.secondary{background:transparent; border:1px solid var(--border); color:var(--text); font-weight:500;}
+.videobox{
+  border:2px dashed var(--border); border-radius:10px; padding:26px; text-align:center;
+  color:var(--muted); margin-bottom:16px;
+}
+.progress{height:6px; background:var(--border); border-radius:4px; overflow:hidden; margin-top:12px;}
+.progress > div{height:100%; background:var(--accent); width:0%; transition:width .2s;}
+.q{font-weight:600; margin-bottom:12px;}
+.opt{
+  display:block; width:100%; text-align:left; padding:10px 12px; margin-bottom:8px;
+  border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text);
+  font-weight:400;
+}
+.opt.selected{border-color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent);}
+.qcount{color:var(--muted); font-size:0.85rem; margin-bottom:10px;}
+canvas{width:100%; touch-action:none; border:1px solid var(--border); border-radius:8px; background:#fff;}
+.thumb{width:100%; border-radius:8px; margin-top:8px; border:1px solid var(--border);}
+.result-pill{
+  display:inline-block; padding:4px 12px; border-radius:20px; font-weight:600; font-size:0.85rem;
+}
+.pass{background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok);}
+.fail{background:color-mix(in srgb, var(--danger) 15%, transparent); color:var(--danger);}
+.small{font-size:0.8rem; color:var(--muted); margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div id="step-name" class="step active">
+    <h1>Visitor Safety Briefing Quiz</h1>
+    <p class="sub">Enter your details to begin.</p>
+    <label>Name of location</label>
+    <p style="margin:0 0 16px; font-weight:600;">Ujjain Bottling Plant</p>
+    <label>Date</label>
+    <input type="text" id="dateInput" placeholder="DD/MM/YYYY">
+    <label>Name of visitor</label>
+    <input type="text" id="nameInput" placeholder="e.g. Priya Sharma">
+    <label>Visitor pass no.</label>
+    <input type="text" id="passInput" placeholder="e.g. VP-1234">
+    <button id="startBtn" disabled>Start</button>
+  </div>
+
+  <div id="step-video" class="step">
+    <h1>Watch the safety video</h1>
+    <p class="sub">You must watch the full video before continuing.</p>
+    <div class="videobox" id="videoBox">▶ Safety briefing film<br>(placeholder — set VIDEO_URL)</div>
+    <div class="progress"><div id="videoProgress"></div></div>
+    <button id="videoNextBtn" disabled>Continue</button>
+  </div>
+
+  <div id="step-quiz" class="step">
+    <h1>Quick quiz</h1>
+    <div class="qcount" id="qCount"></div>
+    <div class="q" id="qText"></div>
+    <div id="qOptions"></div>
+    <button id="quizNextBtn" disabled>Next</button>
+  </div>
+
+  <div id="step-capture" class="step">
+    <h1>Photo &amp; signature</h1>
+    <label>Live photo (camera)</label>
+    <video id="camPreview" autoplay playsinline muted style="width:100%;border-radius:8px;background:#000;"></video>
+    <canvas id="photoCanvas" style="display:none;"></canvas>
+    <p class="small" id="camMsg"></p>
+    <button id="captureBtn" class="secondary" type="button">Capture photo</button>
+    <img id="photoThumb" class="thumb" style="display:none">
+    <button id="retakeBtn" class="secondary" type="button" style="display:none;">Retake photo</button>
+    <label style="margin-top:16px;">Visitor signature</label>
+    <canvas id="sigPad" height="150"></canvas>
+    <button class="secondary" id="clearSig" type="button">Clear signature</button>
+    <label style="margin-top:16px;">Security guard signature</label>
+    <canvas id="sigPadGuard" height="150"></canvas>
+    <button class="secondary" id="clearSigGuard" type="button">Clear signature</button>
+    <button id="submitBtn" disabled>Submit</button>
+  </div>
+
+  <div id="step-result" class="step">
+    <h1>Result</h1>
+    <p class="sub" id="resultMeta"></p>
+    <p class="sub" id="resultName"></p>
+    <span class="result-pill" id="resultPill"></span>
+    <p style="margin-top:10px;" id="resultScore"></p>
+    <img id="resultPhoto" class="thumb" style="display:none">
+    <label style="margin-top:12px;">Visitor signature</label>
+    <canvas id="resultSig" height="90"></canvas>
+    <label style="margin-top:12px;">Security guard signature</label>
+    <canvas id="resultSigGuard" height="90"></canvas>
+    <p class="small" id="saveStatus"></p>
+    <button class="secondary" id="retryBtn" type="button" style="display:none;">Retry saving</button>
+    <button class="secondary" id="restartBtn" type="button">Start over</button>
+    
+  </div>
+
+</div>
+
+<script>
+const questions = [
+  {q:"Are matches/lighters allowed inside the battery area?",
+   qHi:"क्या बैटरी क्षेत्र के अंदर माचिस/लाइटर की अनुमति है?",
+   options:["Allowed for emergency use only","Allowed with supervisor permission","Not allowed","Allowed outside working hours"],
+   optionsHi:["केवल आपातकालीन उपयोग के लिए अनुमति","पर्यवेक्षक की अनुमति से मान्य","अनुमति नहीं","कार्य समय के बाहर अनुमति"], correct:2},
+  {q:"Is smoking permitted in the battery area?",
+   qHi:"क्या बैटरी क्षेत्र में धूम्रपान की अनुमति है?",
+   options:["Permitted in a designated smoking corner","Not permitted","Permitted with a work permit","Permitted after working hours"],
+   optionsHi:["निर्धारित धूम्रपान क्षेत्र में अनुमति","अनुमति नहीं","कार्य अनुमति के साथ स्वीकृत","कार्य समय के बाद अनुमति"], correct:1},
+  {q:"Is wearing dress made of nylon material permitted inside the battery area?",
+   qHi:"क्या बैटरी क्षेत्र के अंदर नायलॉन सामग्री से बनी पोशाक पहनने की अनुमति है?",
+   options:["Yes, if it is fire-retardant nylon","Only with supervisor approval","No","Only during winter"],
+   optionsHi:["हां, अगर यह अग्नि-प्रतिरोधी नायलॉन हो","केवल पर्यवेक्षक की स्वीकृति से","नहीं","केवल सर्दियों में"], correct:2},
+  {q:"In the plant premises, where should a visitor walk?",
+   qHi:"संयंत्र परिसर में, एक आगंतुक को कहाँ चलना चाहिए?",
+   options:["Anywhere convenient","Along vehicle roads only","Directly behind equipment","Demarcated pathway"],
+   optionsHi:["जहां सुविधाजनक हो वहां","केवल वाहन मार्ग पर","उपकरण के ठीक पीछे","सीमांकित मार्ग पर"], correct:3},
+  {q:"What is the speed limit to drive a vehicle inside the battery area?",
+   qHi:"बैटरी क्षेत्र के अंदर वाहन चलाने की गति सीमा क्या है?",
+   options:["5–10 km/hr","20–30 km/hr","40 km/hr","No speed limit"],
+   optionsHi:["5-10 किमी/घंटा","20-30 किमी/घंटा","40 किमी/घंटा","कोई गति सीमा नहीं"], correct:0},
+  {q:"In case of a siren/fire inside the battery area, where should we gather?",
+   qHi:"बैटरी क्षेत्र के अंदर सायरन/आग के मामले में हमें कहाँ इकट्ठा होना चाहिए?",
+   options:["Nearest exit gate","Security office","Assembly point","Parking area"],
+   optionsHi:["निकटतम निकास द्वार","सुरक्षा कार्यालय","एकत्रित होने का बिंदु","पार्किंग क्षेत्र"], correct:2},
+  {q:"While travelling in the plant area, are you allowed to touch or start any machinery?",
+   qHi:"संयंत्र क्षेत्र में यात्रा करते समय, क्या आपको किसी भी मशीनरी को छूने या शुरू करने की अनुमति है?",
+   options:["Yes, if trained","Only in an emergency","Only with gloves on","No"],
+   optionsHi:["हां, अगर प्रशिक्षित हों","केवल आपातकाल में","केवल दस्ताने पहनकर","नहीं"], correct:3},
+  {q:"Are you allowed to operate or tamper with firefighting equipment or hydrants?",
+   qHi:"क्या आपको अग्निशमन उपकरण या हाइड्रेंट को संचालित करने या उससे छेड़छाड़ करने की अनुमति है?",
+   options:["Yes, for testing purposes","No","Yes, with a security escort","Only during fire drills"],
+   optionsHi:["हां, परीक्षण के उद्देश्य से","नहीं","हां, सुरक्षा एस्कॉर्ट के साथ","केवल फायर ड्रिल के दौरान"], correct:1},
+  {q:"What type of tools are permitted inside the battery area?",
+   qHi:"बैटरी क्षेत्र के अंदर किस प्रकार के उपकरणों की अनुमति है?",
+   options:["Any steel tools","Battery-powered tools only","Non-sparking type","Tools brought by the visitor"],
+   optionsHi:["कोई भी स्टील उपकरण","केवल बैटरी चालित उपकरण","गैर-स्पार्किंग प्रकार के उपकरण","आगंतुक द्वारा लाए गए उपकरण"], correct:2},
+  {q:"Where are first aid kits available?",
+   qHi:"प्राथमिक चिकित्सा किट कहाँ उपलब्ध हैं?",
+   options:["In the control room only","At the security gate","With each visitor","In the canteen"],
+   optionsHi:["केवल नियंत्रण कक्ष में","सुरक्षा द्वार पर","प्रत्येक आगंतुक के पास","कैंटीन में"], correct:1},
+  {q:"What additional precaution is needed when working at height more than 2 metres?",
+   qHi:"2 मीटर से अधिक ऊंचाई पर काम करते समय कौन सी अतिरिक्त सावधानियां बरतनी चाहिए?",
+   options:["Safety shoes only","Hand gloves","Full body harness","Ear plugs"],
+   optionsHi:["केवल सुरक्षा जूते","हाथ के दस्ताने","फुल बॉडी हार्नेस","कान के प्लग"], correct:2},
+  {q:"What document is required to carry out any work inside the battery area?",
+   qHi:"बैटरी क्षेत्र के अंदर किसी भी कार्य को करने के लिए किन दस्तावेजों की आवश्यकता होती है?",
+   options:["Visitor pass only","Verbal approval","Identity card only","Work permit"],
+   optionsHi:["केवल आगंतुक पास","मौखिक स्वीकृति","केवल पहचान पत्र","कार्य अनुमति"], correct:3},
+  {q:"Never enter the work area without the appropriate ___.",
+   qHi:"उपयुक्त ___ के बिना कार्य क्षेत्र में कभी प्रवेश न करें।",
+   options:["Company ID card","Personal Protective Equipment (PPE)","Mobile phone","Umbrella"],
+   optionsHi:["कंपनी पहचान पत्र","व्यक्तिगत सुरक्षा उपकरण (पीपीई)","मोबाइल फोन","छाता"], correct:1},
+  {q:"Are you supposed to stand below lifted equipment?",
+   qHi:"क्या आपको उठाए गए उपकरण के नीचे खड़ा होना चाहिए?",
+   options:["Yes, briefly","Only with a helmet","Yes, if instructed","No"],
+   optionsHi:["हां, संक्षेप में","केवल हेलमेट के साथ","हां, यदि निर्देश दिया जाए","नहीं"], correct:3},
+  {q:"Are mobile phones permitted inside the battery area?",
+   qHi:"क्या बैटरी क्षेत्र के अंदर मोबाइल फोन की अनुमति है?",
+   options:["Yes, in flight mode","Yes, for emergency calls only","Only intrinsically safe phones","No"],
+   optionsHi:["हां, फ्लाइट मोड में","हां, केवल आपातकालीन कॉल के लिए","केवल आंतरिक रूप से सुरक्षित फोन","नहीं"], correct:3}
+];
+const bank = questions.map(q=>q.q);
+
+let state = { name:"", location:"", date:"", passNo:"", score:0, quizSet:[], quizIdx:0, answers:[], photo:null, sig:null, sigGuard:null };
+
+function show(id){
+  document.querySelectorAll(".step").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// Step 1: name + location + date + pass no
+const nameInput = document.getElementById("nameInput");
+const dateInput = document.getElementById("dateInput");
+const passInput = document.getElementById("passInput");
+dateInput.value = new Date().toLocaleDateString("en-GB");
+function checkStartReady(){
+  document.getElementById("startBtn").disabled = !(
+    nameInput.value.trim() && dateInput.value.trim() && passInput.value.trim()
+  );
+}
+[nameInput, dateInput, passInput].forEach(i=>i.addEventListener("input", checkStartReady));
+document.getElementById("startBtn").onclick = ()=>{
+  state.name = nameInput.value.trim();
+  state.location = "Ujjain Bottling Plant";
+  state.date = dateInput.value.trim();
+  state.passNo = passInput.value.trim();
+  show("step-video");
+  runVideo();
+};
+
+// ===== CONFIG =====
+const SCRIPT_URL = "PASTE_WEB_APP_URL_HERE"; // Google Apps Script web app URL
+const VIDEO_URL  = "";                        // e.g. "safety-film.mp4" hosted next to this page; leave "" to use a 6-second placeholder
+
+// Step 2: video
+function runVideo(){
+  if(VIDEO_URL){
+    const btn=document.getElementById("videoNextBtn"); btn.disabled=true;
+    const box=document.getElementById("videoBox");
+    box.innerHTML='<video id="film" src="'+VIDEO_URL+'" controls playsinline controlsList="nodownload" style="width:100%;border-radius:8px;"></video>';
+    const v=document.getElementById("film"); let last=0;
+    v.addEventListener("timeupdate",()=>{ if(!v.seeking && v.currentTime>last) last=v.currentTime; document.getElementById("videoProgress").style.width=(v.duration?last/v.duration*100:0)+"%"; });
+    v.addEventListener("seeking",()=>{ if(v.currentTime>last+1) v.currentTime=last; });
+    v.addEventListener("ended",()=>{ btn.disabled=false; });
+    return;
+  }
+  let pct=0;
+  const bar=document.getElementById("videoProgress");
+  const btn=document.getElementById("videoNextBtn");
+  btn.disabled=true;
+  const t=setInterval(()=>{
+    pct+=100/30;
+    bar.style.width=Math.min(pct,100)+"%";
+    if(pct>=100){clearInterval(t); btn.disabled=false;}
+  },200);
+}
+document.getElementById("videoNextBtn").onclick = ()=>{
+  state.quizSet = [...bank.keys()].sort(()=>Math.random()-0.5).slice(0,5).map(i=>questions[i]);
+  state.quizIdx=0; state.answers=[];
+  show("step-quiz");
+  renderQuestion();
+};
+
+// Step 3: quiz
+function renderQuestion(){
+  const q = state.quizSet[state.quizIdx];
+  document.getElementById("qCount").textContent = `Question ${state.quizIdx+1} of ${state.quizSet.length} / प्रश्न ${state.quizIdx+1} का ${state.quizSet.length}`;
+  document.getElementById("qText").innerHTML = `${q.q}<br><span style="color:var(--muted); font-weight:400;">${q.qHi}</span>`;
+  const opts = document.getElementById("qOptions");
+  opts.innerHTML="";
+  document.getElementById("quizNextBtn").disabled = true;
+  q.options.forEach((opt,idx)=>{
+    const b=document.createElement("button");
+    b.className="opt"; b.type="button";
+    b.innerHTML = `${opt}<br><span style="color:var(--muted); font-size:0.85rem;">${q.optionsHi[idx]}</span>`;
+    b.onclick=()=>{
+      opts.querySelectorAll(".opt").forEach(o=>o.classList.remove("selected"));
+      b.classList.add("selected");
+      state.answers[state.quizIdx]=idx;
+      document.getElementById("quizNextBtn").disabled=false;
+    };
+    opts.appendChild(b);
+  });
+}
+document.getElementById("quizNextBtn").onclick = ()=>{
+  if(state.quizIdx < state.quizSet.length-1){
+    state.quizIdx++;
+    renderQuestion();
+  } else {
+    state.score = state.answers.reduce((acc,a,i)=> acc + (a===state.quizSet[i].correct?1:0), 0);
+    show("step-capture");
+    startCamera();
+  }
+};
+
+// Step 4: photo + signature
+let camStream=null;
+function startCamera(){
+  const msg=document.getElementById("camMsg");
+  const video=document.getElementById("camPreview");
+  msg.textContent="";
+  video.style.display="block";
+  navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}, audio:false}).then(stream=>{
+    camStream=stream;
+    video.srcObject=stream;
+  }).catch(()=>{
+    msg.textContent="Camera access was blocked or unavailable in this preview (common inside an embedded iframe). On the deployed site — not embedded — camera capture works normally.";
+    video.style.display="none";
+  });
+}
+function stopCamera(){
+  if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+}
+document.getElementById("captureBtn").onclick = ()=>{
+  const video=document.getElementById("camPreview");
+  const canvas=document.getElementById("photoCanvas");
+  canvas.width=video.videoWidth||320; canvas.height=video.videoHeight||240;
+  canvas.getContext("2d").drawImage(video,0,0,canvas.width,canvas.height);
+  state.photo = canvas.toDataURL("image/jpeg",0.6);
+  document.getElementById("photoThumb").src=state.photo;
+  document.getElementById("photoThumb").style.display="block";
+  video.style.display="none";
+  document.getElementById("captureBtn").style.display="none";
+  document.getElementById("retakeBtn").style.display="block";
+  stopCamera();
+  checkSubmitReady();
+};
+document.getElementById("retakeBtn").onclick = ()=>{
+  document.getElementById("photoThumb").style.display="none";
+  document.getElementById("captureBtn").style.display="block";
+  document.getElementById("retakeBtn").style.display="none";
+  state.photo=null;
+  checkSubmitReady();
+  startCamera();
+};
+
+function makeSigPad(canvasId, clearBtnId){
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext("2d");
+  function sizeCanvas(){ canvas.width = canvas.clientWidth; }
+  sizeCanvas(); window.addEventListener("resize", sizeCanvas);
+  const pad = { canvas, ctx, drawing:false, hasInk:false };
+  function pos(e){
+    const r = canvas.getBoundingClientRect();
+    const p = e.touches ? e.touches[0] : e;
+    return {x:p.clientX-r.left, y:p.clientY-r.top};
+  }
+  function start(e){ pad.drawing=true; pad.hasInk=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); checkSubmitReady(); }
+  function move(e){ if(!pad.drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); }
+  function end(){ pad.drawing=false; }
+  ["mousedown","touchstart"].forEach(ev=>canvas.addEventListener(ev,start));
+  ["mousemove","touchmove"].forEach(ev=>canvas.addEventListener(ev,move));
+  ["mouseup","mouseleave","touchend"].forEach(ev=>canvas.addEventListener(ev,end));
+  document.getElementById(clearBtnId).onclick = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); pad.hasInk=false; checkSubmitReady(); };
+  return pad;
+}
+const visitorPad = makeSigPad("sigPad","clearSig");
+const guardPad = makeSigPad("sigPadGuard","clearSigGuard");
+
+function checkSubmitReady(){
+  document.getElementById("submitBtn").disabled = !(state.photo && visitorPad.hasInk && guardPad.hasInk);
+}
+
+document.getElementById("submitBtn").onclick = ()=>{
+  state.sig = visitorPad.canvas.toDataURL("image/png");
+  state.sigGuard = guardPad.canvas.toDataURL("image/png");
+  const passPct = 80;
+  const pct = Math.round((state.score/state.quizSet.length)*100);
+  const pass = pct >= passPct;
+  document.getElementById("resultMeta").textContent = `${state.location} — ${state.date} — Pass No: ${state.passNo}`;
+  document.getElementById("resultName").textContent = state.name;
+  const pill = document.getElementById("resultPill");
+  pill.textContent = pass ? "PASS" : "NOT PASSED";
+  pill.className = "result-pill " + (pass ? "pass" : "fail");
+  document.getElementById("resultScore").textContent = `Score: ${state.score} / ${state.quizSet.length} (${pct}%) — pass mark ${passPct}%`;
+  const rp = document.getElementById("resultPhoto");
+  rp.src = state.photo; rp.style.display="block";
+  function paintSig(canvasEl, dataUrl){
+    canvasEl.width = canvasEl.clientWidth;
+    const img = new Image();
+    img.onload = ()=>{ canvasEl.getContext("2d").drawImage(img,0,0,canvasEl.width,canvasEl.height); };
+    img.src = dataUrl;
+  }
+  paintSig(document.getElementById("resultSig"), state.sig);
+  paintSig(document.getElementById("resultSigGuard"), state.sigGuard);
+  show("step-result");
+  window._lastRecord = {
+    name:state.name, location:state.location, date:state.date, passNo:state.passNo,
+    score:state.score, total:state.quizSet.length, percentage:pct, result:pass?"PASS":"NOT PASSED",
+    questions:state.quizSet.map((q,i)=>q.q+" => "+q.options[state.answers[i]]+(state.answers[i]===q.correct?" (correct)":" (wrong)")).join("\n"),
+    photo:state.photo, visitorSignature:state.sig, guardSignature:state.sigGuard
+  };
+  saveRecord();
+};
+
+async function saveRecord(){
+  const st=document.getElementById("saveStatus"), rb=document.getElementById("retryBtn");
+  rb.style.display="none"; st.textContent="Saving record…";
+  try{
+    const res = await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(window._lastRecord)});
+    const out = await res.json();
+    if(out.ok){ st.textContent="✓ Record saved (ref "+out.ref+")"; }
+    else throw new Error(out.error||"save failed");
+  }catch(err){
+    st.textContent="⚠ Could not save the record. Check the connection and retry — do not let the visitor leave until saved.";
+    rb.style.display="block";
+  }
+}
+document.getElementById("retryBtn").onclick = saveRecord;
+
+document.getElementById("restartBtn").onclick = ()=>{
+  state = { name:"", location:"", date:"", passNo:"", score:0, quizSet:[], quizIdx:0, answers:[], photo:null, sig:null, sigGuard:null };
+  nameInput.value=""; passInput.value="";
+  dateInput.value = new Date().toLocaleDateString("en-GB");
+  document.getElementById("startBtn").disabled=true;
+  document.getElementById("photoThumb").style.display="none";
+  document.getElementById("captureBtn").style.display="block";
+  document.getElementById("retakeBtn").style.display="none";
+  stopCamera();
+  visitorPad.ctx.clearRect(0,0,visitorPad.canvas.width,visitorPad.canvas.height); visitorPad.hasInk=false;
+  guardPad.ctx.clearRect(0,0,guardPad.canvas.width,guardPad.canvas.height); guardPad.hasInk=false;
+  document.getElementById("submitBtn").disabled=true;
+  document.getElementById("videoProgress").style.width="0%";
+  show("step-name");
+};
+</script>
+</body>
+</html>
