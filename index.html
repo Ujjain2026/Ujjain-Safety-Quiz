@@ -342,6 +342,8 @@ document.getElementById("retakeBtn").onclick = ()=>{
 function makeSigPad(canvasId, clearBtnId){
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext("2d");
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = 2;
   function sizeCanvas(){ canvas.width = canvas.clientWidth; }
   sizeCanvas(); window.addEventListener("resize", sizeCanvas);
   const pad = { canvas, ctx, drawing:false, hasInk:false };
