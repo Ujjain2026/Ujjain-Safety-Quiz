@@ -79,7 +79,7 @@ body.result-mode .card{max-width:720px;}
 .b-text{font-size:1.6rem; font-weight:700; margin-top:4px;}
 .b-score{font-size:1rem; margin-top:4px; color:var(--text);}
 .save-status{font-size:0.9rem; text-align:center; color:var(--muted); margin:6px 0 4px;}
-.save-status.ok{color:var(--ok); font-weight:700; font-size:1.05rem; background:color-mix(in srgb, var(--ok) 12%, transparent); border:1px solid var(--ok); border-radius:8px; padding:10px;}
+.save-status.ok{color:#1a8a4a !important; font-weight:700; font-size:1.05rem; background:color-mix(in srgb, var(--ok) 12%, transparent); border:1px solid var(--ok); border-radius:8px; padding:10px;}
 .save-status.warn{color:var(--danger); font-weight:600;}
 #pendingNotice{display:none; margin-bottom:12px; padding:10px; border-radius:8px; font-size:0.9rem; text-align:center; border:1px solid var(--border);}
 .sec-title{font-weight:700; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:22px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border);}
@@ -94,6 +94,16 @@ body.result-mode .card{max-width:720px;}
 .rsig{width:100%; height:auto; background:#fff; border:1px solid var(--border); border-radius:8px; display:block;}
 @media (max-width:480px){ .sigrow{grid-template-columns:1fr;} .grid{grid-template-columns:90px 1fr;} }
 @media print{ body{background:#fff; padding:0;} .card{box-shadow:none; border:none; max-width:100%;} .noprint,#retryBtn{display:none !important;} }
+
+.save-box{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:10px; margin:6px 0 4px; font-weight:600; border:2px solid var(--border);}
+.save-icon{flex:0 0 auto; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#fff; background:var(--muted);}
+.save-box.saving{border-color:#e0a100; background:color-mix(in srgb, #e0a100 12%, transparent);}
+.save-box.saving .save-icon{background:#e0a100; animation:pulse 1s infinite;}
+.save-box.saved{border-color:var(--ok); background:color-mix(in srgb, var(--ok) 15%, transparent); color:var(--ok);}
+.save-box.saved .save-icon{background:var(--ok);}
+.save-box.failed{border-color:var(--danger); background:color-mix(in srgb, var(--danger) 12%, transparent); color:var(--danger);}
+.save-box.failed .save-icon{background:var(--danger);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 </style>
 </head>
 <body>
@@ -150,7 +160,7 @@ body.result-mode .card{max-width:720px;}
 
   <div id="step-result" class="step">
     <div id="banner" class="banner"><div class="b-icon" id="bIcon"></div><div class="b-text" id="bText"></div><div class="b-score" id="bScore"></div></div>
-    <p class="save-status" id="saveStatus"></p>
+    <div class="save-box" id="saveBox"><span class="save-icon" id="saveIcon"></span><span id="saveStatus"></span></div>
     <button class="secondary" id="retryBtn" type="button" style="display:none;">Retry saving</button>
 
     <div class="sec-title">Visitor details</div>
@@ -503,6 +513,7 @@ document.getElementById("submitBtn").onclick = ()=>{
   document.getElementById("resultSig").src = state.sig;
   document.getElementById("resultSigGuard").src = state.sigGuard;
   document.body.classList.add("result-mode");
+  history.pushState({result:1},"");
   show("step-result");
   window.scrollTo(0,0);
   window._lastRecord = {
@@ -517,36 +528,74 @@ document.getElementById("submitBtn").onclick = ()=>{
   saveRecord();
 };
 
+// Green tick icon drawn as SVG (always green, does not depend on phone fonts)
+const TICK_SVG='<svg width="22" height="22" viewBox="0 0 24 24" style="vertical-align:-5px;margin-right:6px"><circle cx="12" cy="12" r="11" fill="#1a8a4a"/><path d="M6.5 12.5l3.8 3.8 7.2-8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function setSavedMsg(el, text){
+  el.innerHTML = TICK_SVG + "<span></span>";
+  el.lastChild.textContent = text;
+}
+let saveState="idle";   // idle | saving | saved | failed
+function setSave(state, text){
+  saveState=state;
+  const box=document.getElementById("saveBox");
+  box.className="save-box "+state;
+  document.getElementById("saveIcon").textContent = state==="saved" ? "✓" : state==="failed" ? "!" : "…";
+  document.getElementById("saveStatus").textContent = text;
+}
+async function postRecord(rec, signal){
+  const res = await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(rec),signal});
+  return res.json();
+}
 async function saveRecord(){
-  const st=document.getElementById("saveStatus"), rb=document.getElementById("retryBtn");
+  const rb=document.getElementById("retryBtn");
   rb.style.display="none";
-  window._saving=true; st.className="save-status";
+  // keep a copy on this device until the server confirms, so nothing is lost if the page is closed
+  try{ localStorage.setItem("pendingRecord", JSON.stringify(window._lastRecord)); }catch(e){}
   const MAX_TRIES=3;
   for(let attempt=1; attempt<=MAX_TRIES; attempt++){
-    st.textContent = attempt===1 ? "Saving record… please wait (up to 30 seconds)"
-                                 : "Still saving… retrying ("+attempt+"/"+MAX_TRIES+")";
+    setSave("saving", attempt===1 ? "Saving record… please wait, do not go back or close this page."
+                                  : "Still saving… retrying ("+attempt+"/"+MAX_TRIES+"). Do not go back.");
     const ctrl=new AbortController();
-    const timer=setTimeout(()=>ctrl.abort(), 45000);      // give up on a stuck request after 45 s
+    const timer=setTimeout(()=>ctrl.abort(), 45000);
     try{
-      const res = await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(window._lastRecord),signal:ctrl.signal});
-      const out = await res.json();
+      const out = await postRecord(window._lastRecord, ctrl.signal);
       clearTimeout(timer);
       if(out.ok){
-        st.textContent="✓ Record saved successfully (Ref: "+out.ref+")"; st.className="save-status ok";
-        window._saving=false; window._saved=true;
         try{ localStorage.removeItem("pendingRecord"); }catch(e){}
+        setSave("saved","Record saved successfully (Ref: "+out.ref+")");
         return;
       }
       throw new Error(out.error||"save failed");
     }catch(err){
       clearTimeout(timer);
       if(attempt===MAX_TRIES){
-        st.textContent="⚠ Could not save the record. Check the connection and tap Retry — do not let the visitor leave until saved.";
-        rb.style.display="block"; st.className="save-status warn"; window._saving=false;
+        setSave("failed","Could not save the record. Check the connection and tap Retry. Do not let the visitor leave until saved.");
+        rb.style.display="block";
       }
     }
   }
 }
+
+// Warn if someone tries to leave / press Back before the record is saved
+window.addEventListener("beforeunload",(e)=>{
+  if(saveState==="saving"||saveState==="failed"){ e.preventDefault(); e.returnValue=""; }
+});
+window.addEventListener("popstate",()=>{
+  if(saveState==="saving"||saveState==="failed"){
+    history.pushState({result:1},"");
+    alert("The record is not saved yet. Please wait for the green tick before leaving.");
+  }
+});
+
+// If a previous record was never confirmed (page closed too early), send it now in the background
+(async function resendPending(){
+  let raw=null; try{ raw=localStorage.getItem("pendingRecord"); }catch(e){}
+  if(!raw) return;
+  try{
+    const out = await postRecord(JSON.parse(raw));
+    if(out.ok){ try{ localStorage.removeItem("pendingRecord"); }catch(e){} }
+  }catch(e){}
+})();
 document.getElementById("retryBtn").onclick = saveRecord;
 
 // Back button / closing the tab while saving: stay on the page until the record is saved
@@ -573,7 +622,7 @@ window.addEventListener("beforeunload", (e)=>{
       if(out.ok){
         try{ localStorage.removeItem("pendingRecord"); }catch(e){}
         n.style.cssText="display:block; color:var(--ok); font-weight:700; border-color:var(--ok);";
-        n.textContent="✓ Previous record saved successfully (Ref: "+out.ref+")";
+        setSavedMsg(n,"Previous record saved successfully (Ref: "+out.ref+")");
         return;
       }
     }catch(e){}
@@ -593,6 +642,7 @@ document.getElementById("restartBtn").onclick = ()=>{
   document.getElementById("retakeBtn").style.display="none";
   stopCamera();
   document.body.classList.remove("result-mode");
+  saveState="idle";
   visitorPad.ctx.clearRect(0,0,visitorPad.canvas.width,visitorPad.canvas.height); visitorPad.hasInk=false;
   guardPad.ctx.clearRect(0,0,guardPad.canvas.width,guardPad.canvas.height); guardPad.hasInk=false;
   document.getElementById("submitBtn").disabled=true;
