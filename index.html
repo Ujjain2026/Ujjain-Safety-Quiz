@@ -342,24 +342,89 @@ document.getElementById("retakeBtn").onclick = ()=>{
 function makeSigPad(canvasId, clearBtnId){
   const canvas = document.getElementById(canvasId);
   const ctx = canvas.getContext("2d");
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = 2;
-  function sizeCanvas(){ canvas.width = canvas.clientWidth; }
-  sizeCanvas(); window.addEventListener("resize", sizeCanvas);
-  const pad = { canvas, ctx, drawing:false, hasInk:false };
-  function pos(e){
-    const r = canvas.getBoundingClientRect();
-    const p = e.touches ? e.touches[0] : e;
-    return {x:p.clientX-r.left, y:p.clientY-r.top};
+
+  function resizeCanvas(){
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
   }
-  function start(e){ pad.drawing=true; pad.hasInk=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); checkSubmitReady(); }
-  function move(e){ if(!pad.drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); }
-  function end(){ pad.drawing=false; }
-  ["mousedown","touchstart"].forEach(ev=>canvas.addEventListener(ev,start));
-  ["mousemove","touchmove"].forEach(ev=>canvas.addEventListener(ev,move));
-  ["mouseup","mouseleave","touchend"].forEach(ev=>canvas.addEventListener(ev,end));
-  document.getElementById(clearBtnId).onclick = ()=>{ ctx.clearRect(0,0,canvas.width,canvas.height); pad.hasInk=false; checkSubmitReady(); };
+
+  resizeCanvas();
+
+  const pad = {
+    canvas: canvas,
+    ctx: ctx,
+    drawing: false,
+    hasInk: false
+  };
+
+  function getPosition(e){
+    const rect = canvas.getBoundingClientRect();
+
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  }
+
+  canvas.addEventListener("pointerdown", function(e){
+    e.preventDefault();
+
+    canvas.setPointerCapture(e.pointerId);
+
+    const p = getPosition(e);
+
+    pad.drawing = true;
+    pad.hasInk = true;
+
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+
+    checkSubmitReady();
+  });
+
+  canvas.addEventListener("pointermove", function(e){
+    if(!pad.drawing) return;
+
+    e.preventDefault();
+
+    const p = getPosition(e);
+
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  });
+
+  function stopDrawing(e){
+    if(e) e.preventDefault();
+    pad.drawing = false;
+  }
+
+  canvas.addEventListener("pointerup", stopDrawing);
+  canvas.addEventListener("pointercancel", stopDrawing);
+  canvas.addEventListener("pointerleave", stopDrawing);
+
+  document.getElementById(clearBtnId).onclick = function(){
+    ctx.clearRect(
+      0,
+      0,
+      canvas.clientWidth,
+      canvas.clientHeight
+    );
+
+    pad.hasInk = false;
+    checkSubmitReady();
+  };
+
   return pad;
+}
 }
 const visitorPad = makeSigPad("sigPad","clearSig");
 const guardPad = makeSigPad("sigPadGuard","clearSigGuard");
