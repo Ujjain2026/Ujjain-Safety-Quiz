@@ -79,6 +79,9 @@ body.result-mode .card{max-width:720px;}
 .b-text{font-size:1.6rem; font-weight:700; margin-top:4px;}
 .b-score{font-size:1rem; margin-top:4px; color:var(--text);}
 .save-status{font-size:0.9rem; text-align:center; color:var(--muted); margin:6px 0 4px;}
+.save-status.ok{color:var(--ok); font-weight:700; font-size:1.05rem; background:color-mix(in srgb, var(--ok) 12%, transparent); border:1px solid var(--ok); border-radius:8px; padding:10px;}
+.save-status.warn{color:var(--danger); font-weight:600;}
+#pendingNotice{display:none; margin-bottom:12px; padding:10px; border-radius:8px; font-size:0.9rem; text-align:center; border:1px solid var(--border);}
 .sec-title{font-weight:700; font-size:0.85rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:22px 0 8px; padding-bottom:4px; border-bottom:1px solid var(--border);}
 .grid{display:grid; grid-template-columns:110px 1fr; gap:8px 12px;}
 .grid .k,.sigrow .k{color:var(--muted); font-size:0.9rem;}
@@ -95,6 +98,7 @@ body.result-mode .card{max-width:720px;}
 </head>
 <body>
 <div class="card">
+  <div id="pendingNotice"></div>
 
   <div id="step-name" class="step active">
     <h1>Visitor Safety Briefing Quiz</h1>
@@ -507,12 +511,16 @@ document.getElementById("submitBtn").onclick = ()=>{
     questions:state.quizSet.map((q,i)=>q.q+" => "+q.options[state.answers[i]]+(state.answers[i]===q.correct?" (correct)":" (wrong)")).join("\n"),
     photo:state.photo, visitorSignature:state.sig, guardSignature:state.sigGuard
   };
+  window._saved=false;
+  try{ localStorage.setItem("pendingRecord", JSON.stringify(window._lastRecord)); }catch(e){}   // safety copy until saved
+  history.pushState({result:true}, "");
   saveRecord();
 };
 
 async function saveRecord(){
   const st=document.getElementById("saveStatus"), rb=document.getElementById("retryBtn");
   rb.style.display="none";
+  window._saving=true; st.className="save-status";
   const MAX_TRIES=3;
   for(let attempt=1; attempt<=MAX_TRIES; attempt++){
     st.textContent = attempt===1 ? "Saving record… please wait (up to 30 seconds)"
@@ -523,18 +531,56 @@ async function saveRecord(){
       const res = await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify(window._lastRecord),signal:ctrl.signal});
       const out = await res.json();
       clearTimeout(timer);
-      if(out.ok){ st.textContent="✓ Record saved successfully (Ref: "+out.ref+")"; return; }
+      if(out.ok){
+        st.textContent="✓ Record saved successfully (Ref: "+out.ref+")"; st.className="save-status ok";
+        window._saving=false; window._saved=true;
+        try{ localStorage.removeItem("pendingRecord"); }catch(e){}
+        return;
+      }
       throw new Error(out.error||"save failed");
     }catch(err){
       clearTimeout(timer);
       if(attempt===MAX_TRIES){
         st.textContent="⚠ Could not save the record. Check the connection and tap Retry — do not let the visitor leave until saved.";
-        rb.style.display="block";
+        rb.style.display="block"; st.className="save-status warn"; window._saving=false;
       }
     }
   }
 }
 document.getElementById("retryBtn").onclick = saveRecord;
+
+// Back button / closing the tab while saving: stay on the page until the record is saved
+window.addEventListener("popstate", ()=>{
+  if(document.getElementById("step-result").classList.contains("active") && !window._saved){
+    history.pushState({result:true}, "");
+    alert("Please wait — the record is still being saved. Do not go back until you see the green tick ✓.");
+  }
+});
+window.addEventListener("beforeunload", (e)=>{
+  if(window._saving){ e.preventDefault(); e.returnValue=""; }
+});
+
+// If a previous record was never saved (page closed / connection lost), save it now
+(async function resumePending(){
+  let raw=null; try{ raw=localStorage.getItem("pendingRecord"); }catch(e){}
+  if(!raw) return;
+  const n=document.getElementById("pendingNotice");
+  n.style.display="block"; n.textContent="Saving a previous record…";
+  for(let i=0;i<3;i++){
+    try{
+      const res=await fetch(SCRIPT_URL,{method:"POST",body:raw});
+      const out=await res.json();
+      if(out.ok){
+        try{ localStorage.removeItem("pendingRecord"); }catch(e){}
+        n.style.cssText="display:block; color:var(--ok); font-weight:700; border-color:var(--ok);";
+        n.textContent="✓ Previous record saved successfully (Ref: "+out.ref+")";
+        return;
+      }
+    }catch(e){}
+  }
+  n.style.cssText="display:block; color:var(--danger); font-weight:600; border-color:var(--danger);";
+  n.textContent="⚠ A previous record could not be saved. Reopen this page with a working connection to retry.";
+})();
 document.getElementById("printBtn").onclick = ()=>window.print();
 
 document.getElementById("restartBtn").onclick = ()=>{
