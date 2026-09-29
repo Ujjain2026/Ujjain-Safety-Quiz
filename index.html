@@ -12,16 +12,6 @@
   box-sizing:border-box;
   padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#14161a; --card:#1e2126; --text:#eef0f3; --muted:#9aa1ac;
-    --accent:#4a90e2; --accent-text:#0b0d10; --border:#2b2f36;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#14161a; --card:#1e2126; --text:#eef0f3; --muted:#9aa1ac;
-  --accent:#4a90e2; --accent-text:#0b0d10; --border:#2b2f36;
-}
 html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%;}
 *{box-sizing:border-box;}
 body{
@@ -104,17 +94,90 @@ body.result-mode .card{max-width:720px;}
 .save-box.failed{border-color:var(--danger); background:color-mix(in srgb, var(--danger) 12%, transparent); color:var(--danger);}
 .save-box.failed .save-icon{background:var(--danger);}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ===== Tablets & computers ===== */
+video#camPreview{max-height:60vh; object-fit:cover;}
+.opt{cursor:pointer;} .opt:hover{border-color:var(--accent);}
+button:hover:not(:disabled){filter:brightness(1.08);}
+.cap-sig label{margin-top:16px;} .cap-sig .first-label{margin-top:0;}
+@media (min-width:768px){
+  body{padding:40px 24px; align-items:flex-start;}
+  .card{max-width:780px; padding:36px;}
+  h1{font-size:1.5rem;} p.sub{font-size:1rem;}
+  label{font-size:0.95rem;}
+  input[type=text]{padding:13px 14px; font-size:1.05rem;}
+  button{padding:14px; font-size:1.05rem;}
+  .q{font-size:1.2rem;} .qcount{font-size:0.95rem;}
+  .opt{padding:14px 16px; font-size:1.05rem;}
+  .cap-grid{display:grid; grid-template-columns:1fr 1fr; gap:32px; align-items:start;}
+  .cap-sig .first-label{margin-top:0;}
+  canvas#sigPad,canvas#sigPadGuard{cursor:crosshair;}
+  body.result-mode .card{max-width:860px;}
+  #step-name button,#step-video button,#step-quiz button{max-width:320px; display:block; margin-left:auto; margin-right:auto;}
+}
+@media (min-width:1100px){
+  .card{max-width:900px;}
+  body.result-mode .card{max-width:980px;}
+}
+
+/* ===== Colourful background ===== */
+:root{
+  --bg-grad:
+    radial-gradient(circle at 12% 15%, rgba(255,183,77,.55) 0, transparent 38%),
+    radial-gradient(circle at 88% 10%, rgba(244,114,182,.50) 0, transparent 40%),
+    radial-gradient(circle at 85% 88%, rgba(56,189,248,.55) 0, transparent 42%),
+    radial-gradient(circle at 10% 90%, rgba(74,222,128,.50) 0, transparent 40%),
+    linear-gradient(135deg,#e0ecff 0%,#f3e8ff 50%,#ffe9d6 100%);
+}
+body{background:var(--bg-grad); background-attachment:fixed; background-color:var(--bg);}
+.card{position:relative; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.15);}
+.card::before{content:""; position:absolute; top:0; left:0; right:0; height:6px;
+  background:linear-gradient(90deg,#f59e0b,#ec4899,#8b5cf6,#0ea5e9,#22c55e);}
+.progress > div{background:linear-gradient(90deg,#0ea5e9,#22c55e);}
+h1{background:linear-gradient(90deg,#1d6fd8,#8b5cf6,#ec4899); -webkit-background-clip:text; background-clip:text; color:transparent; -webkit-text-fill-color:transparent;}
+@media print{ body{background:#fff !important;} .card::before{display:none;} h1{background:none; -webkit-text-fill-color:currentColor; color:#000;} }
+
+/* ===== IndianOil blue & orange theme (always light) ===== */
+:root{
+  color-scheme:light;
+  --accent:#0B3B8F; --accent-text:#ffffff; --navy:#02164F; --orange:#F37022;
+  --bg:#eef3fb; --card:#ffffff; --text:#1a1d23; --muted:#5b6472; --border:#d9dfeb;
+  --bg-grad:
+    radial-gradient(circle at 10% 12%, rgba(243,112,34,.38) 0, transparent 40%),
+    radial-gradient(circle at 92% 8%, rgba(11,59,143,.32) 0, transparent 42%),
+    radial-gradient(circle at 92% 92%, rgba(243,112,34,.32) 0, transparent 42%),
+    radial-gradient(circle at 6% 94%, rgba(11,59,143,.30) 0, transparent 42%),
+    linear-gradient(135deg,#e3edff 0%,#ffffff 50%,#ffece0 100%);
+}
+.card::before{display:none;}
+h1{background:none; -webkit-text-fill-color:currentColor; color:var(--navy);}
+.progress > div{background:linear-gradient(90deg,#F37022,#0B3B8F);}
+.plant-head{
+  text-align:center; margin:-24px -24px 22px; padding:26px 16px 18px;
+  background:linear-gradient(135deg,#02164F 0%,#0B3B8F 100%); color:#fff;
+  border-bottom:6px solid #F37022;
+}
+.plant-name{font-size:1.7rem; font-weight:800; letter-spacing:.04em; text-transform:uppercase; line-height:1.15;}
+.plant-sub{margin-top:6px; font-size:0.95rem; color:#ffd2b3; font-weight:600; letter-spacing:.06em; text-transform:uppercase;}
+@media (min-width:768px){
+  .plant-head{margin:-36px -36px 28px; padding:34px 20px 24px;}
+  .plant-name{font-size:2.3rem;}
+  .plant-sub{font-size:1.05rem;}
+}
+@media print{ .plant-head{background:none; color:#000; border-bottom:3px solid #F37022;} .plant-sub{color:#444;} }
 </style>
 </head>
 <body>
 <div class="card">
+  <div class="plant-head">
+    <div class="plant-name">Ujjain Bottling Plant</div>
+    <div class="plant-sub">Visitor Safety Briefing</div>
+  </div>
   <div id="pendingNotice"></div>
 
   <div id="step-name" class="step active">
     <h1>Visitor Safety Briefing Quiz</h1>
     <p class="sub">Enter your details to begin.</p>
-    <label>Name of location</label>
-    <p style="margin:0 0 16px; font-weight:600;">Ujjain Bottling Plant</p>
     <label>Date</label>
     <input type="text" id="dateInput" placeholder="DD/MM/YYYY">
     <label>Name of visitor</label>
@@ -142,19 +205,27 @@ body.result-mode .card{max-width:720px;}
 
   <div id="step-capture" class="step">
     <h1>Photo &amp; signature</h1>
+    <div class="cap-grid">
+    <div class="cap-photo">
     <label>Live photo (camera)</label>
     <video id="camPreview" autoplay playsinline muted style="width:100%;border-radius:8px;background:#000;"></video>
     <canvas id="photoCanvas" style="display:none;"></canvas>
     <p class="small" id="camMsg"></p>
     <button id="captureBtn" class="secondary" type="button">Capture photo</button>
+    <button id="uploadBtn" class="secondary" type="button" style="display:none;">Upload photo from this device</button>
+    <input type="file" id="photoFile" accept="image/*" style="display:none;">
     <img id="photoThumb" class="thumb" style="display:none">
     <button id="retakeBtn" class="secondary" type="button" style="display:none;">Retake photo</button>
-    <label style="margin-top:16px;">Visitor signature</label>
+    </div>
+    <div class="cap-sig">
+    <label class="first-label">Visitor signature</label>
     <canvas id="sigPad" height="150"></canvas>
     <button class="secondary" id="clearSig" type="button">Clear signature</button>
     <label style="margin-top:16px;">Security guard signature</label>
     <canvas id="sigPadGuard" height="150"></canvas>
     <button class="secondary" id="clearSigGuard" type="button">Clear signature</button>
+    </div>
+    </div>
     <button id="submitBtn" disabled>Submit</button>
   </div>
 
@@ -410,15 +481,19 @@ let camStream=null;
 function startCamera(){
   const msg=document.getElementById("camMsg");
   const video=document.getElementById("camPreview");
-  msg.textContent="";
+  const capBtn=document.getElementById("captureBtn");
+  const upBtn=document.getElementById("uploadBtn");
+  msg.textContent=""; upBtn.style.display="none"; capBtn.style.display="block";
   video.style.display="block";
+  function noCamera(){
+    msg.textContent="No camera found or camera access was blocked. Please upload a photo of the visitor instead.";
+    video.style.display="none"; capBtn.style.display="none"; upBtn.style.display="block";
+  }
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ noCamera(); return; }
   navigator.mediaDevices.getUserMedia({video:{facingMode:"user"}, audio:false}).then(stream=>{
     camStream=stream;
     video.srcObject=stream;
-  }).catch(()=>{
-    msg.textContent="Camera access was blocked or unavailable in this preview (common inside an embedded iframe). On the deployed site — not embedded — camera capture works normally.";
-    video.style.display="none";
-  });
+  }).catch(noCamera);
 }
 function stopCamera(){
   if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
@@ -439,9 +514,34 @@ document.getElementById("captureBtn").onclick = ()=>{
   stopCamera();
   checkSubmitReady();
 };
+document.getElementById("uploadBtn").onclick = ()=>document.getElementById("photoFile").click();
+document.getElementById("photoFile").onchange = (e)=>{
+  const f=e.target.files && e.target.files[0];
+  if(!f) return;
+  const msg=document.getElementById("camMsg");
+  if(!/^image\//.test(f.type)){ msg.textContent="Please choose an image file."; return; }
+  const url=URL.createObjectURL(f), img=new Image();
+  img.onload=()=>{
+    const scale=Math.min(1, 480/img.width);          // shrink to max 480px wide, same as camera photos
+    const c=document.getElementById("photoCanvas");
+    c.width=Math.round(img.width*scale); c.height=Math.round(img.height*scale);
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    URL.revokeObjectURL(url);
+    state.photo=c.toDataURL("image/jpeg",0.6);
+    const t=document.getElementById("photoThumb"); t.src=state.photo; t.style.display="block";
+    document.getElementById("camPreview").style.display="none";
+    document.getElementById("captureBtn").style.display="none";
+    document.getElementById("uploadBtn").style.display="none";
+    document.getElementById("retakeBtn").style.display="block";
+    msg.textContent="";
+    checkSubmitReady();
+  };
+  img.onerror=()=>{ msg.textContent="Could not read that image. Please try another photo."; };
+  img.src=url;
+  e.target.value="";
+};
 document.getElementById("retakeBtn").onclick = ()=>{
   document.getElementById("photoThumb").style.display="none";
-  document.getElementById("captureBtn").style.display="block";
   document.getElementById("retakeBtn").style.display="none";
   state.photo=null;
   checkSubmitReady();
